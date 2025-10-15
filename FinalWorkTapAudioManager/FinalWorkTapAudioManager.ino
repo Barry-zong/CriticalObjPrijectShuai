@@ -31,7 +31,7 @@ unsigned long lastTriggerTime = 0;
 unsigned long doubleTapCount = 0;
 unsigned long lastDoubleTapTime = 0;
 #define DOUBLETAP_DEBOUNCE_MS 300  // Prevent counting same double-tap multiple times
-#define COUNT_RESET_TIMEOUT_MS 120000  // Reset counter after 2 minutes of no double-taps
+#define COUNT_RESET_TIMEOUT_MS 60000  // Reset counter after 2 minutes of no double-taps
 
 // Track list from SD
 static const uint8_t MAX_TRACKS = 50;
