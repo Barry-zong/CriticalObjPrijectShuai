@@ -82,7 +82,7 @@ void setup() {
 
   // SD card initialization
   SPI.begin(18, 19, 23, 5);
-  if (!SD.begin(5, SPI, 5000000)) {
+  if (!SD.begin(5, SPI, 10000000)) {
     Serial.println("initialization failed!");
     return;
   }
