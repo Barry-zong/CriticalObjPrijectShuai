@@ -19,9 +19,9 @@
 Adafruit_LIS3DH lis = Adafruit_LIS3DH(&Wire);
 
 // Audio objects
-AudioGeneratorMP3 *mp3;
-AudioFileSourceSD *file;
-AudioOutputI2S *out;
+AudioGeneratorMP3 *mp3 = nullptr;
+AudioFileSourceSD *file = nullptr;
+AudioOutputI2S *out = nullptr;
 
 volatile bool playing = 0;
 volatile byte loadTrack = 0;
@@ -82,7 +82,7 @@ void setup() {
 
   // SD card initialization
   SPI.begin(18, 19, 23, 5);
-  if (!SD.begin(5, SPI, 10000000)) {
+  if (!SD.begin(5, SPI, 5000000)) {
     Serial.println("initialization failed!");
     return;
   }
@@ -245,9 +245,28 @@ void loop() {
     Serial.print("Loading: ");
     Serial.println(currentName);
 
+    // Safety: ensure previous file is closed
+    if (file) {
+      delete file;
+      file = nullptr;
+    }
+
     file = new AudioFileSourceSD(currentName.c_str());
+    if (!file) {
+      Serial.println("Error: Failed to create file source");
+      loadTrack = 0;
+      return;
+    }
+
     out->SetGain(0.90);
-    mp3->begin(file, out);
+
+    if (!mp3->begin(file, out)) {
+      Serial.println("Error: Failed to start MP3 decoder");
+      delete file;
+      file = nullptr;
+      loadTrack = 0;
+      return;
+    }
 
     Serial.print("Started: ");
     Serial.println(currentName);
@@ -258,7 +277,7 @@ void loop() {
 
   // Audio playback loop
   static unsigned long lastPlayLog = 0;
-  if (playing && mp3->isRunning()) {
+  if (playing && mp3 && mp3->isRunning()) {
     if (!mp3->loop()) {
       mp3->stop();
       if (file) {
@@ -275,6 +294,13 @@ void loop() {
         Serial.println(currentName);
         lastPlayLog = now;
       }
+    }
+  } else if (playing && (!mp3 || !mp3->isRunning())) {
+    // Safety: if playing flag is set but mp3 is not running, reset
+    playing = 0;
+    if (file) {
+      delete file;
+      file = nullptr;
     }
   }
 
