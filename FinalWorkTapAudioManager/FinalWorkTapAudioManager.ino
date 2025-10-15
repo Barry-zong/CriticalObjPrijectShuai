@@ -96,11 +96,19 @@ void setup() {
   File entry;
   while ((entry = root.openNextFile())) {
     if (!entry.isDirectory()) {
-      String name = String("/") + String(entry.name());
+      String fileName = String(entry.name());
+
+      // Skip hidden files (starting with . or ._)
+      if (fileName.startsWith(".")) {
+        entry.close();
+        continue;
+      }
+
+      String name = String("/") + fileName;
       name.toLowerCase();
       if (name.endsWith(".mp3")) {
         if (trackCount < MAX_TRACKS) {
-          tracks[trackCount++] = String("/") + String(entry.name());
+          tracks[trackCount++] = String("/") + fileName;
         }
       }
     }
