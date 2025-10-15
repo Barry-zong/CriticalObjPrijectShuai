@@ -41,6 +41,7 @@ String currentName;
 
 void setup() {
   Serial.begin(115200);
+  randomSeed(analogRead(3));  // 从未接线的引脚读取随机噪声
   delay(200);
 
   // Start I2C
@@ -168,14 +169,12 @@ void loop() {
   if (c & 0x20) {
     // Check if this is a new double-tap (debounce)
     if (currentTime - lastDoubleTapTime >= DOUBLETAP_DEBOUNCE_MS) {
-      // Increment double-tap counter
       doubleTapCount++;
       lastDoubleTapTime = currentTime;
 
       Serial.print("Polled: double tap #");
       Serial.println(doubleTapCount);
 
-      // Check cooldown for audio playback
       if (currentTime - lastTriggerTime >= COOLDOWN_MS) {
         Serial.print("=== Double-tap audio trigger! === (Total count: ");
         Serial.print(doubleTapCount);
@@ -191,9 +190,9 @@ void loop() {
           Serial.println("Stopped current playback");
         }
 
-        // Play track based on double-tap count (循环播放)
-        loadTrack = ((doubleTapCount - 1) % trackCount) + 1;
-        Serial.print("Will play track #");
+        // 随机播放
+        loadTrack = random(1, trackCount + 1); // 1~trackCount
+        Serial.print("Will play random track #");
         Serial.println(loadTrack);
       } else {
         Serial.println("Double-tap trigger ignored (cooldown period)");
