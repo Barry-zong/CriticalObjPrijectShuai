@@ -12,13 +12,11 @@
 // LIS3DH pins
 #define LIS3DH_INT1_PIN 33
 
-// Audio trigger pin
-#define TRIGGER_PIN 13
+// Audio trigger
 #define COOLDOWN_MS 1000
 
 // LIS3DH sensor
 Adafruit_LIS3DH lis = Adafruit_LIS3DH(&Wire);
-volatile bool tapIRQ = false;
 
 // Audio objects
 AudioGeneratorMP3 *mp3;
@@ -27,20 +25,19 @@ AudioOutputI2S *out;
 
 volatile bool playing = 0;
 volatile byte loadTrack = 0;
-bool lastTriggerState = LOW;
 unsigned long lastTriggerTime = 0;
 
-bool canPlayAudio = false ;
+// Double-tap counter
+unsigned long doubleTapCount = 0;
+unsigned long lastDoubleTapTime = 0;
+#define DOUBLETAP_DEBOUNCE_MS 300  // Prevent counting same double-tap multiple times
+#define COUNT_RESET_TIMEOUT_MS 120000  // Reset counter after 2 minutes of no double-taps
 
 // Track list from SD
 static const uint8_t MAX_TRACKS = 50;
 String tracks[MAX_TRACKS];
 uint8_t trackCount = 0;
 String currentName;
-
-void IRAM_ATTR lisIntHandler() {
-  tapIRQ = true;
-}
 
 void setup() {
   Serial.begin(115200);
@@ -70,14 +67,7 @@ void setup() {
 
   lis.setClick(2, threshold, timeLimit, latency, window);
 
-  pinMode(LIS3DH_INT1_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(LIS3DH_INT1_PIN), lisIntHandler, RISING);
-
   Serial.println("Tap detection ready (single & double). Tap the sensor/enclosure.");
-
-  // Audio trigger pin
-  pinMode(TRIGGER_PIN, INPUT_PULLDOWN);
-  Serial.println("Trigger pin configured (GPIO13 with internal pulldown)");
 
   // Audio output
   out = new AudioOutputI2S();
@@ -123,78 +113,85 @@ void setup() {
     return;
   }
 
+  // Sort tracks alphabetically
+  for (uint8_t i = 0; i < trackCount - 1; i++) {
+    for (uint8_t j = i + 1; j < trackCount; j++) {
+      if (tracks[i] > tracks[j]) {
+        String temp = tracks[i];
+        tracks[i] = tracks[j];
+        tracks[j] = temp;
+      }
+    }
+  }
+
   Serial.print("Found ");
   Serial.print(trackCount);
-  Serial.println(" MP3 files.");
-  Serial.println("Waiting for trigger signal on GPIO13...");
-  Serial.println("Each trigger will play the first track (1s cooldown).");
+  Serial.println(" MP3 files (sorted):");
+  Serial.println("====================");
+
+  // Print numbered list of all tracks
+  for (uint8_t i = 0; i < trackCount; i++) {
+    Serial.print(i + 1);
+    Serial.print(". ");
+    Serial.println(tracks[i]);
+  }
+
+  Serial.println("====================");
+  Serial.println("Waiting for double-tap to play audio...");
+  Serial.println("Each double-tap will play the next track in sequence (1s cooldown).");
 }
 
 void loop() {
   unsigned long currentTime = millis();
 
-  // Handle LIS3DH tap interrupt
-  if (tapIRQ) {
-    tapIRQ = false;
-
-    uint8_t click = lis.getClick();
-    if (click == 0) return;
-
-    bool isDouble = click & 0x20;
-    bool isSingle = click & 0x10;
-
-    String axes = "";
-    if (click & 0x01) axes += "X";
-    if (click & 0x02) axes += (axes.length() ? "+Y" : "Y");
-    if (click & 0x04) axes += (axes.length() ? "+Z" : "Z");
-    if (axes.length() == 0) axes = "unknown axis";
-
-    if (isDouble) {
-      canPlayAudio = true ;
-      Serial.print("[INT] Double-tap on ");
-      Serial.println(axes);
-    } else if (isSingle) {
-      Serial.print("[INT] Single-tap on ");
-      Serial.println(axes);
-    } else {
-      Serial.print("[INT] Other click src: 0x");
-      Serial.println(click, HEX);
-    }
+  // Check if counter should be reset (2 minutes of inactivity)
+  if (doubleTapCount > 0 && (currentTime - lastDoubleTapTime >= COUNT_RESET_TIMEOUT_MS)) {
+    Serial.println("*** Counter reset after 2 minutes of inactivity ***");
+    doubleTapCount = 0;
   }
 
   // Poll tap detection
   uint8_t c = lis.getClick();
-  if (c & 0x10) Serial.println("Polled: single tap");
-  if (c & 0x20) Serial.println("Polled: double tap");
+  
+  if (c & 0x10) {
+   // Serial.println("Polled: single tap");
+  }
+  
+  if (c & 0x20) {
+    // Check if this is a new double-tap (debounce)
+    if (currentTime - lastDoubleTapTime >= DOUBLETAP_DEBOUNCE_MS) {
+      // Increment double-tap counter
+      doubleTapCount++;
+      lastDoubleTapTime = currentTime;
 
-  // Handle audio trigger
-  bool currentTriggerState = digitalRead(TRIGGER_PIN);
-if(canPlayAudio)
-{
-  load
-}
-  if (currentTriggerState == HIGH && lastTriggerState == LOW) {
-    if (currentTime - lastTriggerTime >= COOLDOWN_MS) {
-      Serial.println("=== Trigger detected! ===");
-      lastTriggerTime = currentTime;
+      Serial.print("Polled: double tap #");
+      Serial.println(doubleTapCount);
 
-      if (playing && mp3->isRunning()) {
-        mp3->stop();
-        if (file) {
-          delete file;
-          file = nullptr;
+      // Check cooldown for audio playback
+      if (currentTime - lastTriggerTime >= COOLDOWN_MS) {
+        Serial.print("=== Double-tap audio trigger! === (Total count: ");
+        Serial.print(doubleTapCount);
+        Serial.println(")");
+        lastTriggerTime = currentTime;
+
+        if (playing && mp3->isRunning()) {
+          mp3->stop();
+          if (file) {
+            delete file;
+            file = nullptr;
+          }
+          Serial.println("Stopped current playback");
         }
-        Serial.println("Stopped current playback");
+
+        // Play track based on double-tap count (循环播放)
+        loadTrack = ((doubleTapCount - 1) % trackCount) + 1;
+        Serial.print("Will play track #");
+        Serial.println(loadTrack);
+      } else {
+        Serial.println("Double-tap trigger ignored (cooldown period)");
       }
-
-      loadTrack = 1;
-
-    } else {
-      Serial.println("Trigger ignored (cooldown period)");
     }
   }
-
-  lastTriggerState = currentTriggerState;
 
   // Load track
   if (loadTrack) {
