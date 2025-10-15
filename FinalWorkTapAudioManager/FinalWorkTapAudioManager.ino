@@ -145,7 +145,7 @@ void loop() {
   unsigned long currentTime = millis();
 
   // Check if counter should be reset (2 minutes of inactivity)
-  if (doubleTapCount > 0 && (currentTime - lastDoubleTapTime >= COUNT_RESET_TIMEOUT_MS)) {
+  if (doubleTapCount > 0 && lastDoubleTapTime > 0 && (currentTime - lastDoubleTapTime >= COUNT_RESET_TIMEOUT_MS)) {
     Serial.println("*** Counter reset after 2 minutes of inactivity ***");
     doubleTapCount = 0;
   }
