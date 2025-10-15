@@ -8,7 +8,7 @@
 #include "AudioOutputI2S.h"
 #include "AudioFileSourceSD.h"
 #include "driver/i2s.h"
-
+// hello JDX
 // LIS3DH pins
 #define LIS3DH_INT1_PIN 33
 
