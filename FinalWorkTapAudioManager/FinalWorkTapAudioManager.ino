@@ -43,9 +43,6 @@ void setup() {
   Serial.begin(115200);
   delay(200);
 
-  // Initialize random seed
-  randomSeed(analogRead(0));
-
   // Start I2C
   Wire.begin();
 
@@ -149,10 +146,7 @@ void setup() {
 
   Serial.println("====================");
   Serial.println("Waiting for double-tap to play audio...");
-  Serial.println("Playback pattern:");
-  Serial.println("  Taps 1-3: Random from tracks 1-5");
-  Serial.println("  Taps 4-6: Random from tracks 6-9");
-  Serial.println("  (Pattern repeats after 6 taps, or resets after 2min)");
+  Serial.println("Each double-tap will play the next track in sequence (1s cooldown).");
 }
 
 void loop() {
@@ -197,38 +191,10 @@ void loop() {
           Serial.println("Stopped current playback");
         }
 
-        // Play track based on double-tap count
-        // First 3 taps: randomly play tracks 1-5
-        // Next 3 taps: randomly play tracks 6-9
-        uint8_t tapInCycle = ((doubleTapCount - 1) % 6) + 1;  // 1-6 within each cycle
-
-        if (tapInCycle <= 3) {
-          // First 3 taps: play tracks 1-5 (index 0-4)
-          if (trackCount >= 5) {
-            loadTrack = random(1, 6);  // Random between 1-5
-            Serial.print("First 3 taps: Will play random track #");
-            Serial.print(loadTrack);
-            Serial.print(" (tap ");
-            Serial.print(tapInCycle);
-            Serial.println(" of cycle)");
-          } else {
-            Serial.println("Error: Not enough tracks for first group (need 5)");
-            loadTrack = 0;
-          }
-        } else {
-          // Next 3 taps: play tracks 6-9 (index 5-8)
-          if (trackCount >= 9) {
-            loadTrack = random(6, 10);  // Random between 6-9
-            Serial.print("Next 3 taps: Will play random track #");
-            Serial.print(loadTrack);
-            Serial.print(" (tap ");
-            Serial.print(tapInCycle);
-            Serial.println(" of cycle)");
-          } else {
-            Serial.println("Error: Not enough tracks for second group (need 9)");
-            loadTrack = 0;
-          }
-        }
+        // Play track based on double-tap count (循环播放)
+        loadTrack = ((doubleTapCount - 1) % trackCount) + 1;
+        Serial.print("Will play track #");
+        Serial.println(loadTrack);
       } else {
         Serial.println("Double-tap trigger ignored (cooldown period)");
       }
