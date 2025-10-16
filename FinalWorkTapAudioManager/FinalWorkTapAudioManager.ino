@@ -154,7 +154,7 @@ void loop() {
 
   // Check if counter should be reset (2 minutes of inactivity)
   if (doubleTapCount > 0 && lastDoubleTapTime > 0 && (currentTime - lastDoubleTapTime >= COUNT_RESET_TIMEOUT_MS)) {
-    Serial.println("*** Counter reset after 2 minutes of inactivity ***");
+    Serial.println("*** Counter reset after 1 minute of inactivity ***");
     doubleTapCount = 0;
   }
 
@@ -215,7 +215,7 @@ void loop() {
     Serial.println(currentName);
 
     file = new AudioFileSourceSD(currentName.c_str());
-    out->SetGain(0.90);
+    out->SetGain(0.85);
     mp3->begin(file, out);
 
     Serial.print("Started: ");
