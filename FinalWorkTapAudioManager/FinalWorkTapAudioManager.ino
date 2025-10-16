@@ -215,7 +215,7 @@ void loop() {
     Serial.println(currentName);
 
     file = new AudioFileSourceSD(currentName.c_str());
-    out->SetGain(0.85);
+    out->SetGain(0.80);
     mp3->begin(file, out);
 
     Serial.print("Started: ");
