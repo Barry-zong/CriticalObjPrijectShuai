@@ -31,7 +31,7 @@ unsigned long lastTriggerTime = 0;
 unsigned long doubleTapCount = 0;
 unsigned long lastDoubleTapTime = 0;
 #define DOUBLETAP_DEBOUNCE_MS 300  // Prevent counting same double-tap multiple times
-#define COUNT_RESET_TIMEOUT_MS 60000  // Reset counter after 2 minutes of no double-taps
+#define COUNT_RESET_TIMEOUT_MS 60000  // Reset counter after 1 minute of no double-taps
 
 // Track list from SD
 static const uint8_t MAX_TRACKS = 50;
@@ -79,7 +79,7 @@ void setup() {
 
   // SD card initialization
   SPI.begin(18, 19, 23, 5);
-  if (!SD.begin(5, SPI, 10000000)) {
+  if (!SD.begin(5, SPI, 5000000)) {
     Serial.println("initialization failed!");
     return;
   }
